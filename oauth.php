@@ -2,13 +2,12 @@
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/includes/schema.php';
 
-
 use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use GuzzleHttp\Client;
 
-// CONSTANTS / FUNCTIONS :
-//
+// CONSTANTS | FUNCTIONS :
+
 function assoc_rows_by_col_val($data_file,$col_val_index,$col_compare_index) {
   $schema_a = new Schema($data_file,'../exports');
   $row_headers_a = $schema_a->data_index[0];
@@ -91,20 +90,62 @@ function enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priorit
 
 function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id) {
   $resource = '';
+  //
   switch($base_resource) {
+
     case 'app' :
       $resource = 'applications/' . $app_UUID . '/';
       break;
+
     case 'env' :
       $resource = 'environments/' . $env_id .'-'. $app_UUID . '/';
 
       switch($route) {
+
+        case 'databases' :
+          $resource .= 'databases';
+          error_log('databases case');
+          if (is_array($site_info) && count(array_keys($site_info))) {
+            $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
+            $resource .= ($db_name) ? '/' . $db_name : '';
+          }
+          break;
+
         case 'backups' :
           $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
           $resource .= 'databases/' . $db_name . '/backups';
           error_log('backups case');
-          if (!$db_name) { error_log('the database name is missing'); }
+          if (!$db_name) {
+            $resource = '';
+            error_log('the database name is missing for the requested site');
+            error_log('API resource will return null and request will terminate');
+          }
           break;
+
+        case 'restore' :
+          $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
+          $site_name = !empty($site_info["SITE_NAME"]) ? $site_info["SITE_NAME"] : '';
+          error_log('restore case - making request for most recent db backup ID');
+          // make an initial call to get the most recent database backup id
+          $response_json = acquia_cloud_api_request('GET',$resource . 'databases/' . $db_name . '/backups');
+          $response_data = json_decode($response_json,true);
+
+          $fresh_backup_id = ( !empty($response_data['_embedded']['items'][0]) &&
+            !empty($response_data['_embedded']['items'][0]['id']) ) ?
+            $response_data['_embedded']['items'][0]['id'] : '';
+
+          if ($fresh_backup_id) {
+            $resource .= 'databases/' . $db_name . '/backups/' . $fresh_backup_id . '/actions/restore';
+            error_log('last backup was ' . $response_data['_embedded']['items'][0]['completed_at']);
+            error_log('databse backup# '. $fresh_backup_id . ' will be restored to db ' . $db_name . ' for ' . $site_name);
+            //$resource = '';
+          } else {
+            $resource = '';
+            error_log('last databse backup was not found');
+            error_log('API resource will return null and request will terminate');
+          }
+          break;
+
         default :
          $resource .= $route;
          error_log($route . ' case');
@@ -122,7 +163,9 @@ function acquia_cloud_api_request($method,$resource) {
   // CREDs
   $clientId = '';
   $clientSecret = '';
-  // API REQUEST BOILERPLATE
+
+  // API REQUEST BOILERPLATE - from Acquia Cloud Documentation
+  // Bearer Token Authentication via OAuth
   $provider = new GenericProvider([
       'clientId'                => $clientId,
       'clientSecret'            => $clientSecret,
@@ -151,16 +194,15 @@ function acquia_cloud_api_request($method,$resource) {
       // Failed to get the access token.
       exit($e->getMessage());
   }
-
-  $response_data = json_decode($responseBody,true);
   return $responseBody;
 }
-//
+
 // BEGIN PROCEDURE :
-//
+
 // SORT SITE INFO
 $site_info_by_name = assoc_rows_by_col_val('acsf-sites',1,3);
 $site_info_by_priority = group_rows_by_col_val('acsf-sites-i',0);
+
 // SET API CALL ARGS
 $methods = ['GET','PUT','POST','PATCH','DELETE'];
 $app_UUID = 'e72adc2f-0420-484a-bbb3-52e31a0b7448';
@@ -169,32 +211,40 @@ $env_ids = [
   'test' => '2717',
   'live' => '2715'
 ];
-// GET EXECUTION PARAMS FROM SHELL CALL
+$wait_seconds = 5;
+
+// GET EXECUTION PARAMS FROM php SHELL CALL
 $method = ( !empty($argv[1]) && in_array($argv[1],$methods) ) ? $argv[1] : 'GET';
 $base_resource = !empty($argv[2]) ? $argv[2] : '';
 $env_slug = !empty($argv[3]) ? $argv[3] : '';
 $env_id = !empty($env_ids[$env_slug]) ? $env_ids[$env_slug] : '' ;
 $route = !empty($argv[4]) ?  $argv[4] : '';
 $site_arg = !empty($argv[5]) ?  $argv[5] : '';
-// SET TASK SCOPE - the $targets table
+
+// SET TASK SCOPE - the targets table
 $targets = enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priority);
 //
 error_log('target sites enqueued for ' . $route . ' task: ' . strval(count($targets)));
-error_log(print_r($targets, true));
-//
+foreach($targets as $site_info_row) {
+  if (!empty($site_info_row['SITE_NAME'])) {
+    error_log($site_info_row['SITE_NAME']);
+  }
+}
+
+// MAKE THE API REQUEST(S)
 foreach($targets as $site_info) {
   // TRIAGE ROUTE- assemble the request URL
   $resource = triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id);
-  //
-  error_log('API resource: ' . $resource);
-  //
-  $response_json = acquia_cloud_api_request($method,$resource);
-  /*
-  foreach($response_data['_embedded']['items'] as $resp_row) {
-    error_log('\r\nresponse row object id:');
-    error_log(print_r($resp_row['id']));
-    error_log('\r\nresponse row object completion time:');
-    error_log(print_r($resp_row['completed_at']));
+
+  if ($resource) {
+    error_log('calling API resource: ' . $resource);
+
+    $response_json = acquia_cloud_api_request($method,$resource);
+
+    $response_data = json_decode($response_json,true);
+
+    sleep($wait_seconds);
+  } else {
+    error_log('the resource returned null; crucial site info not found');
   }
-  */
 }
