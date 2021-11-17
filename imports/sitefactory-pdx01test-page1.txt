@@ -1,0 +1,6 @@
+156  prometcollege  znldhr156  prometcollege.test-pdx.acsitefactory.com
+186  admissions     znldhr186  admissions.test-pdx.acsitefactory.com
+726  psuonline      znldhr726  psuonline.test-pdx.acsitefactory.com
+761  research       znldhr761  research.test-pdx.acsitefactory.com
+781  ondeck         znldhr781  ondeck.test-pdx.acsitefactory.com
+806  syndication    znldhr806  syndication.test-pdx.acsitefactory.com
