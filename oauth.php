@@ -6,7 +6,11 @@ use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use GuzzleHttp\Client;
 
-// CONSTANTS | FUNCTIONS :
+// CONSTANTS  & FUNCTIONS:
+
+define('CLIENT_ID','');
+define('CLIENT_SECRET','');
+define('APP_UUID','');
 
 function assoc_rows_by_col_val($data_file,$col_val_index,$col_compare_index) {
   $schema_a = new Schema($data_file,'../exports');
@@ -17,7 +21,6 @@ function assoc_rows_by_col_val($data_file,$col_val_index,$col_compare_index) {
     if (!empty($schema_a->data_index[$i][$col_val_index])) {
 
       if (strpos($schema_a->data_index[$i][$col_compare_index],'test-')) {
-
         $prop_str = 'test-' . $schema_a->data_index[$i][$col_val_index];
       } else {
         $prop_str = $schema_a->data_index[$i][1];
@@ -88,126 +91,11 @@ function enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priorit
 }
 
 
-function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id,$option) {
-  global $directive;
-  global $registry_table;
-  global $registry_obj;
-  $resource = '';
-  //
-  switch($base_resource) {
-
-    case 'app' :
-      $resource = 'applications/' . $app_UUID . '/';
-      break;
-
-    case 'env' :
-      $resource = 'environments/' . $env_id .'-'. $app_UUID . '/';
-
-      switch($route) {
-
-        case 'databases' :
-          $resource .= 'databases';
-          error_log('databases case');
-          if (is_array($site_info) && count(array_keys($site_info))) {
-            $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
-            $resource .= ($db_name) ? '/' . $db_name : '';
-          }
-          break;
-
-        case 'backups' :
-          $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
-          $this_id = '';
-          if ($option) {
-            switch($option) {
-              case 'oldest' :
-                $this_id = get_backup_id($resource,$db_name,false,false);
-              break;
-              case 'newest' :
-                $this_id = get_backup_id($resource,$db_name,true,false);
-              break;
-              case 'oldest-ondemand' :
-                $this_id = get_backup_id($resource,$db_name,false,true);
-              break;
-              case 'newest-ondemand' :
-                $this_id = get_backup_id($resource,$db_name,true,true);
-              break;
-              case 'from-register' :
-                $this_id = $registry_obj[ $site_info["SITE_NAME"] ];
-              break;
-              default :
-                if (intval($option)) {
-                  $this_id = $option;
-                }
-            }
-          }
-          $resource .= 'databases/' . $db_name . '/backups';
-          $resource .= $this_id ? '/' . $this_id : '';
-
-          error_log('backups case');
-          if (!$db_name) {
-            $resource = '';
-            error_log('the database name is missing for the requested site');
-            error_log('API resource will return null and request will terminate');
-          }
-          break;
-
-        case 'restore' :
-          $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
-          $site_name = !empty($site_info["SITE_NAME"]) ? $site_info["SITE_NAME"] : '';
-          error_log('restore case - making request for most recent db backup ID');
-
-          if ($option) {
-            switch($option) {
-              case 'oldest' :
-                $backup_id = get_backup_id($resource,$db_name,false,false);
-              break;
-              case 'newest' :
-                $backup_id = get_backup_id($resource,$db_name,true,false);
-              break;
-              case 'oldest-ondemand' :
-                $backup_id = get_backup_id($resource,$db_name,false,true);
-              break;
-              case 'newest-ondemand' :
-                $backup_id = get_backup_id($resource,$db_name,true,true);
-              break;
-              case 'from-register' :
-                $backup_id = $registry_obj[ $site_info["SITE_NAME"] ];
-              break;
-              default :
-                if (intval($option)) {
-                  $backup_id = $option;
-                }
-            }
-          }
-
-          if ($backup_id) {
-            $resource .= 'databases/' . $db_name . '/backups/' . $backup_id . '/actions/restore';
-            error_log('databse backup# '. $backup_id . ' will be restored to db ' . $db_name . ' for ' . $site_name);
-            //$resource = '';
-          } else {
-            $resource = '';
-            error_log('last databse backup was not found');
-            error_log('API resource will return null and request will terminate');
-          }
-          break;
-
-        default :
-         $resource .= $route;
-         error_log($route . ' case');
-      }
-      break;
-    default :
-      $resource = 'account';
-  }
-  return $resource;
-}
-
-
 function get_backup_id($resource,$db_name,$newest,$ondemand) {
   $backup_id = '';
   $log_item = $newest ? 'newest' : 'oldest';
   $log_item .= $ondemand ? ' ondemand' : '';
-  error_log('making request for ' . $log_item . ' db backup ID');
+  error_log('making request for ' . $log_item . ' backup ID of db ' . $db_name);
   // make an initial call to get the most recent database backup id
   $response_json = acquia_cloud_api_request('GET',$resource . 'databases/' . $db_name . '/backups');
   $response_data = json_decode($response_json,true);
@@ -237,22 +125,135 @@ function get_backup_id($resource,$db_name,$newest,$ondemand) {
       $response_data['_embedded']['items'][$index]['id'] : '';
     error_log('backup ' . $backup_id . ' was made ' . $response_data['_embedded']['items'][$index]['completed_at']);
   }
-
   return $backup_id;
+}
+
+
+function triage_backup_option($option,$resource,$db_name, $site_name) {
+  global $registry_obj;
+  $backup_id = '';
+  error_log('backup options: making request for ' . $option . ' db backup ID');
+
+  if ($option) {
+    switch($option) {
+      case 'oldest' :
+        $backup_id = get_backup_id($resource,$db_name,false,false);
+      break;
+      case 'newest' :
+        $backup_id = get_backup_id($resource,$db_name,true,false);
+      break;
+      case 'oldest-ondemand' :
+        $backup_id = get_backup_id($resource,$db_name,false,true);
+      break;
+      case 'newest-ondemand' :
+        $backup_id = get_backup_id($resource,$db_name,true,true);
+      break;
+      case 'from-register' :
+        $backup_id = (!empty($registry_obj[ $site_name ]) &&
+          intval($registry_obj[ $site_name ]) ) ?
+          $registry_obj[ $site_name ] : '';
+      break;
+      default :
+        if (intval($option)) {
+          $backup_id = $option;
+        } else {
+          error_log('backup option ' . $option . 'is not executable');
+        }
+    }
+  }
+  return $backup_id;
+}
+
+
+function triage_rest_route($site_info,$base_resource,$route,$env_id,$option) {
+  global $registry_table;
+  global $registry_obj;
+  $resource = '';
+  //
+  switch($base_resource) {
+
+    case 'app' :
+      $resource = 'applications/' . APP_UUID . '/';
+      break;
+
+    case 'env' :
+      $resource = 'environments/' . $env_id .'-'. APP_UUID . '/';
+
+      switch($route) {
+
+        case 'databases' :
+          $resource .= 'databases';
+          error_log('databases case');
+          if (is_array($site_info) && count(array_keys($site_info))) {
+            $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
+            $resource .= ($db_name) ? '/' . $db_name : '';
+          }
+          break;
+
+        case 'backups' :
+          $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
+          $site_name = !empty($site_info["SITE_NAME"]) ? $site_info["SITE_NAME"] : '';
+          error_log('backups case');
+
+          $this_id = triage_backup_option($option,$resource,$db_name,$site_name);
+
+          $resource .= 'databases/' . $db_name . '/backups';
+          $resource .= $this_id ? '/' . $this_id : '';
+
+          if ($db_name) {
+            $log_msg = 'requesting db ' . $db_name .  ' backup';
+            $log_msg .= $this_id ? ' ' . $this_id : 's';
+            error_log($log_msg);
+            sleep(2);
+          } else {
+            $resource = '';
+            error_log('the database name is missing for the requested site');
+            error_log('API resource will return null and request will terminate');
+          }
+          break;
+
+        case 'restore' :
+          $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
+          $site_name = !empty($site_info["SITE_NAME"]) ? $site_info["SITE_NAME"] : '';
+          error_log('restore case - making request for ' . $option . ' db backup ID');
+
+          $backup_id = triage_backup_option($option,$resource,$db_name,$site_name);
+
+          if ($backup_id) {
+            $resource .= 'databases/' . $db_name . '/backups/' . $backup_id . '/actions/restore';
+            error_log('databse backup# '. $backup_id . ' restore request to db ' . $db_name . ' for ' . $site_name);
+            error_log($resource);
+            //$resource = '';
+            sleep(2);
+          } else {
+            $resource = '';
+            error_log('requested databse backup was not found');
+            error_log('API resource will return null and request will terminate');
+          }
+          break;
+
+        default :
+         $resource .= $route;
+         error_log($route . ' case has not been validated');
+      }
+      break;
+    default :
+      $resource = '/';
+  }
+  if (strpos($resource,'//')) {
+    $resource = '/';
+  }
+  return $resource;
 }
 
 
 function acquia_cloud_api_request($method,$resource) {
   $responseBody = '';
-  // CREDs
-  $clientId = '03013221-8522-4d90-8e41-68a9d50e6c26';
-  $clientSecret = 'rsqI6YfX1RS5NMiVBZbDMIRqHFv+tFWPj6HHRWvcauk=';
-
   // API REQUEST BOILERPLATE - from Acquia Cloud Documentation
   // Bearer Token Authentication via OAuth
   $provider = new GenericProvider([
-      'clientId'                => $clientId,
-      'clientSecret'            => $clientSecret,
+      'clientId'                => CLIENT_ID,
+      'clientSecret'            => CLIENT_SECRET,
       'urlAuthorize'            => '',
       'urlAccessToken'          => 'https://accounts.acquia.com/api/auth/oauth/token',
       'urlResourceOwnerDetails' => '',
@@ -280,24 +281,20 @@ function acquia_cloud_api_request($method,$resource) {
   }
   return $responseBody;
 }
-
 // BEGIN PROCEDURE :
-
 // SORT SITE INFO
 $site_info_by_name = assoc_rows_by_col_val('acsf-sites',1,3);
 $site_info_by_priority = group_rows_by_col_val('acsf-sites-i',0);
 $registry_obj = [];
 $registry_table = [];
-// SET API CALL ARGS
+// API CALL ARGS
 $methods = ['GET','PUT','POST','PATCH','DELETE'];
-$app_UUID = 'e72adc2f-0420-484a-bbb3-52e31a0b7448';
 $env_ids = [
   'dev' => '2719',
   'test' => '2717',
   'live' => '2715'
 ];
 $wait_seconds = 5;
-
 // GET EXECUTION PARAMS FROM php SHELL CALL
 $method = ( !empty($argv[1]) && in_array($argv[1],$methods) ) ? $argv[1] : 'GET';
 $base_resource = !empty($argv[2]) ? $argv[2] : '';
@@ -320,7 +317,6 @@ switch($option) {
   break;
   default :
 }
-
 // SET TASK SCOPE - the targets table
 $targets = enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priority);
 //
@@ -330,14 +326,14 @@ foreach($targets as $site_info_row) {
     error_log($site_info_row['SITE_NAME']);
   }
 }
-
 // MAKE THE API REQUEST(S)
 foreach($targets as $site_info) {
   // TRIAGE ROUTE- assemble the request URL
-  $resource = triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id,$option);
+  $resource = triage_rest_route($site_info,$base_resource,$route,$env_id,$option);
 
   if ($resource) {
     error_log('calling API resource: ' . $resource);
+    $resource = $resource==='/' ? '' : $resource;
 
     $response_json = acquia_cloud_api_request($method,$resource);
 
@@ -349,9 +345,7 @@ foreach($targets as $site_info) {
       }
       default :
     }
-
     sleep($wait_seconds);
-
   } else {
     error_log('the resource returned null; crucial site info not found');
   }
