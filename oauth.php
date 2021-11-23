@@ -59,7 +59,7 @@ function group_rows_by_col_val($data_file,$col_index) {
 function enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priority) {
   $targets = [];
   if (intval($site_arg)) {
-     if (intval($site_arg) < 6 && intval($site_arg) > 0) {
+     if (intval($site_arg) < 7 && intval($site_arg) > 0) {
        // enqueue a list of site info by priority level
        $targets = $site_info_by_priority[ intval($site_arg) ];
      } else {
@@ -88,7 +88,10 @@ function enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priorit
 }
 
 
-function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id) {
+function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id,$option) {
+  global $directive;
+  global $registry_table;
+  global $registry_obj;
   $resource = '';
   //
   switch($base_resource) {
@@ -113,7 +116,33 @@ function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id) {
 
         case 'backups' :
           $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
+          $this_id = '';
+          if ($option) {
+            switch($option) {
+              case 'oldest' :
+                $this_id = get_backup_id($resource,$db_name,false,false);
+              break;
+              case 'newest' :
+                $this_id = get_backup_id($resource,$db_name,true,false);
+              break;
+              case 'oldest-ondemand' :
+                $this_id = get_backup_id($resource,$db_name,false,true);
+              break;
+              case 'newest-ondemand' :
+                $this_id = get_backup_id($resource,$db_name,true,true);
+              break;
+              case 'from-register' :
+                $this_id = $registry_obj[ $site_info["SITE_NAME"] ];
+              break;
+              default :
+                if (intval($option)) {
+                  $this_id = $option;
+                }
+            }
+          }
           $resource .= 'databases/' . $db_name . '/backups';
+          $resource .= $this_id ? '/' . $this_id : '';
+
           error_log('backups case');
           if (!$db_name) {
             $resource = '';
@@ -126,18 +155,34 @@ function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id) {
           $db_name = !empty($site_info["DATABASE_NAME"]) ? $site_info["DATABASE_NAME"] : '';
           $site_name = !empty($site_info["SITE_NAME"]) ? $site_info["SITE_NAME"] : '';
           error_log('restore case - making request for most recent db backup ID');
-          // make an initial call to get the most recent database backup id
-          $response_json = acquia_cloud_api_request('GET',$resource . 'databases/' . $db_name . '/backups');
-          $response_data = json_decode($response_json,true);
 
-          $fresh_backup_id = ( !empty($response_data['_embedded']['items'][0]) &&
-            !empty($response_data['_embedded']['items'][0]['id']) ) ?
-            $response_data['_embedded']['items'][0]['id'] : '';
+          if ($option) {
+            switch($option) {
+              case 'oldest' :
+                $backup_id = get_backup_id($resource,$db_name,false,false);
+              break;
+              case 'newest' :
+                $backup_id = get_backup_id($resource,$db_name,true,false);
+              break;
+              case 'oldest-ondemand' :
+                $backup_id = get_backup_id($resource,$db_name,false,true);
+              break;
+              case 'newest-ondemand' :
+                $backup_id = get_backup_id($resource,$db_name,true,true);
+              break;
+              case 'from-register' :
+                $backup_id = $registry_obj[ $site_info["SITE_NAME"] ];
+              break;
+              default :
+                if (intval($option)) {
+                  $backup_id = $option;
+                }
+            }
+          }
 
-          if ($fresh_backup_id) {
-            $resource .= 'databases/' . $db_name . '/backups/' . $fresh_backup_id . '/actions/restore';
-            error_log('last backup was ' . $response_data['_embedded']['items'][0]['completed_at']);
-            error_log('databse backup# '. $fresh_backup_id . ' will be restored to db ' . $db_name . ' for ' . $site_name);
+          if ($backup_id) {
+            $resource .= 'databases/' . $db_name . '/backups/' . $backup_id . '/actions/restore';
+            error_log('databse backup# '. $backup_id . ' will be restored to db ' . $db_name . ' for ' . $site_name);
             //$resource = '';
           } else {
             $resource = '';
@@ -158,11 +203,50 @@ function triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id) {
 }
 
 
+function get_backup_id($resource,$db_name,$newest,$ondemand) {
+  $backup_id = '';
+  $log_item = $newest ? 'newest' : 'oldest';
+  $log_item .= $ondemand ? ' ondemand' : '';
+  error_log('making request for ' . $log_item . ' db backup ID');
+  // make an initial call to get the most recent database backup id
+  $response_json = acquia_cloud_api_request('GET',$resource . 'databases/' . $db_name . '/backups');
+  $response_data = json_decode($response_json,true);
+
+  if ($ondemand) {
+    if ($newest) {
+      for ($i = 0; $i < count($response_data['_embedded']['items']); $i++) {
+        if ($response_data['_embedded']['items'][$i]['type']==='ondemand') {
+          $backup_id = $response_data['_embedded']['items'][$i]['id'];
+          error_log('backup ' . $backup_id . ' was made ' . $response_data['_embedded']['items'][$i]['completed_at']);
+          break;
+        }
+      }
+    } else {
+      for ($i = count($response_data['_embedded']['items'])-1; $i > -1; $i--) {
+        if ($response_data['_embedded']['items'][$i]['type']==='ondemand') {
+          $backup_id = $response_data['_embedded']['items'][$i]['id'];
+          error_log('backup ' . $backup_id . ' was made ' . $response_data['_embedded']['items'][$i]['completed_at']);
+          break;
+        }
+      }
+    }
+  } else {
+    $index = $newest ? 0 : count($response_data['_embedded']['items'])-1;
+    $backup_id = ( !empty($response_data['_embedded']['items'][$index]) &&
+      !empty($response_data['_embedded']['items'][$index]['id']) ) ?
+      $response_data['_embedded']['items'][$index]['id'] : '';
+    error_log('backup ' . $backup_id . ' was made ' . $response_data['_embedded']['items'][$index]['completed_at']);
+  }
+
+  return $backup_id;
+}
+
+
 function acquia_cloud_api_request($method,$resource) {
   $responseBody = '';
   // CREDs
-  $clientId = '';
-  $clientSecret = '';
+  $clientId = '03013221-8522-4d90-8e41-68a9d50e6c26';
+  $clientSecret = 'rsqI6YfX1RS5NMiVBZbDMIRqHFv+tFWPj6HHRWvcauk=';
 
   // API REQUEST BOILERPLATE - from Acquia Cloud Documentation
   // Bearer Token Authentication via OAuth
@@ -202,7 +286,8 @@ function acquia_cloud_api_request($method,$resource) {
 // SORT SITE INFO
 $site_info_by_name = assoc_rows_by_col_val('acsf-sites',1,3);
 $site_info_by_priority = group_rows_by_col_val('acsf-sites-i',0);
-
+$registry_obj = [];
+$registry_table = [];
 // SET API CALL ARGS
 $methods = ['GET','PUT','POST','PATCH','DELETE'];
 $app_UUID = 'e72adc2f-0420-484a-bbb3-52e31a0b7448';
@@ -220,6 +305,21 @@ $env_slug = !empty($argv[3]) ? $argv[3] : '';
 $env_id = !empty($env_ids[$env_slug]) ? $env_ids[$env_slug] : '' ;
 $route = !empty($argv[4]) ?  $argv[4] : '';
 $site_arg = !empty($argv[5]) ?  $argv[5] : '';
+$option = !empty($argv[6]) ?  $argv[6] : '';
+$directive = !empty($argv[7]) ?  $argv[7] : '';
+
+switch($option) {
+  case 'from-register' :
+    $filename = $route . '-ids-' . $site_arg;
+    $registry_schema = new Schema($filename,'../data');
+    foreach( $registry_schema->data_index as $row_arr ) {
+      $registry_obj[$row_arr[0]] = $row_arr[1];
+    }
+    error_log('creating registry object');
+    print_r($registry_obj,true);
+  break;
+  default :
+}
 
 // SET TASK SCOPE - the targets table
 $targets = enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priority);
@@ -234,7 +334,7 @@ foreach($targets as $site_info_row) {
 // MAKE THE API REQUEST(S)
 foreach($targets as $site_info) {
   // TRIAGE ROUTE- assemble the request URL
-  $resource = triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id);
+  $resource = triage_rest_route($site_info,$base_resource,$route,$app_UUID,$env_id,$option);
 
   if ($resource) {
     error_log('calling API resource: ' . $resource);
@@ -243,8 +343,22 @@ foreach($targets as $site_info) {
 
     $response_data = json_decode($response_json,true);
 
+    switch($directive) {
+      case 'register' : {
+        $registry_table[] = [ $site_info['SITE_NAME'],$response_data['id'] ];
+      }
+      default :
+    }
+
     sleep($wait_seconds);
+
   } else {
     error_log('the resource returned null; crucial site info not found');
   }
+}
+
+if (count($registry_table)) {
+  $export_str = Schema::make_export_str($registry_table);
+  $filename = $route . '-ids-' . str_replace(',','_',$site_arg);
+  Schema::export_csv($export_str, $filename, '../data' );
 }
