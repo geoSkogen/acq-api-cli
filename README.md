@@ -1,7 +1,8 @@
 ## PHP CLI tool for expediting Acquia Cloud REST API requests
 ***
 ##### Run 'Composer Install'
-##### Insert API Key & Secret in Lines 164-165 of oauth.php
+##### Insert API Key & Secret + App UUID in Lines 11,12 & 13 of oauth.php
+##### (App UUID is in your cloud interface URL: `https://cloud.acquia.com/a/applications/[app_uuid]`)
 ***
 ### Sample Shell Commands
 ***
