@@ -12,6 +12,7 @@ define('CLIENT_ID','');
 define('CLIENT_SECRET','');
 define('APP_UUID','');
 
+
 function assoc_rows_by_col_val($data_file,$col_val_index,$col_compare_index) {
   $schema_a = new Schema($data_file,'../exports');
   $row_headers_a = $schema_a->data_index[0];
@@ -98,6 +99,7 @@ function get_backup_id($resource,$db_name,$newest,$ondemand) {
   error_log('making request for ' . $log_item . ' backup ID of db ' . $db_name);
   // make an initial call to get the most recent database backup id
   $response_json = acquia_cloud_api_request('GET',$resource . 'databases/' . $db_name . '/backups');
+  error_log($response_json);
   $response_data = json_decode($response_json,true);
 
   if ($ondemand) {
@@ -307,7 +309,7 @@ $directive = !empty($argv[7]) ?  $argv[7] : '';
 
 switch($option) {
   case 'from-register' :
-    $filename = $route . '-ids-' . $site_arg;
+    $filename = 'backups-ids-' . $site_arg;
     $registry_schema = new Schema($filename,'../data');
     foreach( $registry_schema->data_index as $row_arr ) {
       $registry_obj[$row_arr[0]] = $row_arr[1];
