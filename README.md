@@ -4,10 +4,11 @@
 ##### Insert API Key & Secret + App UUID in Lines 11,12 & 13 of oauth.php
 ##### (App UUID is in your cloud interface URL: `https://cloud.acquia.com/a/applications/[app_uuid]`)
 ***
-### Backup and Restore Procedure
+### Example Backup and Restore Procedure
 ***
 #### - create backups and record their IDs in an external file:
 `php oauth.php POST env live backups 1`
+
 `php oauth.php GET env live backups 1 newest-ondemand register`
 
 #### - delete unneeded backups if update is successful:
@@ -25,10 +26,10 @@
   `php oauth.php GET env dev databases`  
 
 #### - return all DB backups for two subsites in dev:
-  `php oauth.php GET env dev backups socialwork,engineering`
+  `php oauth.php GET env dev backups socialwork,engineering`    
 
 #### - create a DB backup for a site in test:
-  `php oauth.php POST env live backups admissions`
+  `php oauth.php POST env test backups admissions`
 
 #### - delete oldest DB backup for all dev sites in first priority queue:
   `php oauth.php DELETE env dev backups 1 oldest`   
