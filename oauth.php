@@ -63,7 +63,7 @@ function group_rows_by_col_val($data_file,$col_index) {
 function enqueue_task_targets($site_arg,$site_info_by_name,$site_info_by_priority) {
   $targets = [];
   if (intval($site_arg)) {
-     if (intval($site_arg) < 7 && intval($site_arg) > 0) {
+     if (intval($site_arg) < 8 && intval($site_arg) > 0) {
        // enqueue a list of site info by priority level
        $targets = $site_info_by_priority[ intval($site_arg) ];
      } else {

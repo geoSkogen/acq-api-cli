@@ -4,7 +4,19 @@
 ##### Insert API Key & Secret + App UUID in Lines 11,12 & 13 of oauth.php
 ##### (App UUID is in your cloud interface URL: `https://cloud.acquia.com/a/applications/[app_uuid]`)
 ***
-### Sample Shell Commands
+### Backup and Restore Procedure
+***
+#### - create backups and record their IDs in an external file:
+`php oauth.php POST env live backups 1`
+`php oauth.php GET env live backups 1 newest-ondemand register`
+
+#### - delete unneeded backups if update is successful:
+`php oauth.php DELETE env live backups 1 from-register`
+
+#### - resotre DBs from backup ids in external file if rollback is needed:
+`php oauth.php POST env live restore 1 from-register`
+***
+### Other Sample Shell Commands
 ***
 #### - return system info:
   `php oauth.php GET`
