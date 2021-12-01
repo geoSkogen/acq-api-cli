@@ -20,9 +20,10 @@ function assoc_rows_by_col_val($data_file,$col_val_index,$col_compare_index) {
   for ($i = 1; $i < count($schema_a->data_index); $i++) {
     $row = [];
     if (!empty($schema_a->data_index[$i][$col_val_index])) {
-
       if (strpos($schema_a->data_index[$i][$col_compare_index],'test-')) {
         $prop_str = 'test-' . $schema_a->data_index[$i][$col_val_index];
+      } else if (strpos($schema_a->data_index[$i][$col_compare_index],'dev-')) {
+        $prop_str = 'dev-' . $schema_a->data_index[$i][$col_val_index];
       } else {
         $prop_str = $schema_a->data_index[$i][1];
       }

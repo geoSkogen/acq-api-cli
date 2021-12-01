@@ -1,0 +1,58 @@
+=============================================
+Staging Environment Backup & Restore Commands
+=============================================
+php oauth.php POST env test backups 7
+
+php oauth.php GET env test backups 7 newest-ondemand register
+
+php oauth.php DELETE env test backups 7 from-register
+
+php oauth.php POST env test restore 7 from-register
+
+
+================================================
+Production Environment Backup & Restore Commands
+================================================
+php oauth.php POST env live backups 1
+
+php oauth.php GET env live backups 1 newest-ondemand register
+
+php oauth.php DELETE env live backups 1 from-register
+
+php oauth.php POST env live restore 1 from-register
+
+
+php oauth.php POST env live backups 2
+
+php oauth.php GET env live backups 2 newest-ondemand register
+
+php oauth.php DELETE env live backups 2 from-register
+
+php oauth.php POST env live restore 2 from-register
+
+
+php oauth.php POST env live backups 3
+
+php oauth.php GET env live backups 3 newest-ondemand register
+
+php oauth.php DELETE env live backups 3 from-register
+
+php oauth.php POST env live restore 3 from-register
+
+
+php oauth.php POST env live backups 4
+
+php oauth.php GET env live backups 4 newest-ondemand register
+
+php oauth.php DELETE env live backups 4 from-register
+
+php oauth.php POST env live restore 4 from-register
+
+
+php oauth.php POST env live backups 1
+
+php oauth.php GET env live backups 1 newest-ondemand register
+
+php oauth.php DELETE env live backups 1 from-register
+
+php oauth.php POST env live restore 1 from-register
