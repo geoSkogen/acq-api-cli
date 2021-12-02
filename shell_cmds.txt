@@ -49,10 +49,10 @@ php oauth.php DELETE env live backups 4 from-register
 php oauth.php POST env live restore 4 from-register
 
 
-php oauth.php POST env live backups 1
+php oauth.php POST env live backups 5
 
-php oauth.php GET env live backups 1 newest-ondemand register
+php oauth.php GET env live backups 5 newest-ondemand register
 
-php oauth.php DELETE env live backups 1 from-register
+php oauth.php DELETE env live backups 5 from-register
 
-php oauth.php POST env live restore 1 from-register
+php oauth.php POST env live restore 5 from-register

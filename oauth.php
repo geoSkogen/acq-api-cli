@@ -297,7 +297,7 @@ $env_ids = [
   'test' => '2717',
   'live' => '2715'
 ];
-$wait_seconds = 5;
+$wait_seconds = 1;
 // GET EXECUTION PARAMS FROM php SHELL CALL
 $method = ( !empty($argv[1]) && in_array($argv[1],$methods) ) ? $argv[1] : 'GET';
 $base_resource = !empty($argv[2]) ? $argv[2] : '';
