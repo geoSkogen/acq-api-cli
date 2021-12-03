@@ -22,7 +22,7 @@ foreach($priority_table as $priority_row) {
 
 for ($i = 0; $i < count($site_table); $i++) {
   $this_row = preg_split( '/[\s]+/', $site_table[$i][0] );
-  $this_priority = ( !empty($this_row[3]) && !empty($priority_obj[$this_row[3]]) )?
+  $this_priority = ( !empty($this_row[3]) && !empty($priority_obj[$this_row[3]]) ) ?
     $priority_obj[$this_row[3]] : '(not set)';
   $this_row[] = $this_priority;
   $export_table[] = $this_row;

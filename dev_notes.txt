@@ -1,0 +1,4 @@
+1. bypass the second API call when 'getting' the id of a resource per option
+2. enable a second API call to get the id of the resource just posted
+3. enable a dynamic file-naming rule allowing more than only backups to populate from register file
+  
