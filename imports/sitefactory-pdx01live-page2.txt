@@ -20,7 +20,6 @@ id  site                            db_name     domain
 2816  worldlanguages                  znldhr2816  worldlanguages.pdx.acsitefactory.com
 2826  youthmentoring                  znldhr2826  youthmentoring.pdx.acsitefactory.com
 2831  humanresources                  znldhr2831  humanresources.pdx.acsitefactory.com
-2846  reichowlab                      znldhr2846  reichowlab.pdx.acsitefactory.com
 2901  arts                            znldhr2901  arts.pdx.acsitefactory.com
 2921  financeadministration           znldhr2921  financeadministration.pdx.acsitefactory.com
 2931  healthsafety                    znldhr2931  healthsafety.pdx.acsitefactory.com
