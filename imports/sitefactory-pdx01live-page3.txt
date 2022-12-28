@@ -1,7 +1,6 @@
 id  site                            db_name     domain
 ----  ------------------------------  ----------  ----------------------------------------------------
 3976  campusplanning                  znldhr3976  campusplanning.pdx.acsitefactory.com
-3986  webtraining2                    znldhr3986  webtraining2.pdx.acsitefactory.com
 3996  earlychildhoodeducationhub      znldhr3996  earlychildhoodeducationhub.pdx.acsitefactory.com
 4001  budget                          znldhr4001  budget.pdx.acsitefactory.com
 4006  studentsfirst                   znldhr4006  studentsfirst.pdx.acsitefactory.com
