@@ -34,3 +34,4 @@ id  site                            db_name     domain
 4286  glaciers                        znldhr4286  glaciers.pdx.acsitefactory.com
 4291  centerforlakesandreservoirs     znldhr4291  centerforlakesandreservoirs.pdx.acsitefactory.com
 4296  globalengagement                znldhr4296  globalengagement.pdx.acsitefactory.com
+4331  summerscholars                  znldhr4331  summerscholars.pdx.acsitefactory.com
